@@ -44,11 +44,32 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_JUSTIFY
 # ---------------------------------------------------------------------------
 # CONFIG — loaded from .env file. Do NOT put your API key in this script.
 # ---------------------------------------------------------------------------
-load_dotenv()
-API_KEY     = os.environ.get("PROJECT_API_KEY", "")
-REPO_PATH   = os.environ.get("REPO_PATH", "")
-OUTPUT_DIR  = Path(REPO_PATH) / "newsletters" if REPO_PATH else Path("newsletters")
-GIT_REMOTE  = "origin"
+# Try multiple strategies to load the .env file — handles Python 3.14
+# dotenv compatibility issues and different working directory scenarios.
+_SCRIPT_DIR = Path(__file__).resolve().parent
+
+# Strategy 1: explicit path to .env next to this script (most reliable)
+_env_path = _SCRIPT_DIR / ".env"
+if _env_path.exists():
+    # Read and parse manually — bypasses any python-dotenv version issues
+    with open(_env_path, "r", encoding="utf-8") as _f:
+        for _line in _f:
+            _line = _line.strip()
+            if _line and not _line.startswith("#") and "=" in _line:
+                _k, _v = _line.split("=", 1)
+                os.environ.setdefault(_k.strip(), _v.strip())
+else:
+    # Strategy 2: fall back to load_dotenv for any other .env location
+    load_dotenv(dotenv_path=_env_path)
+
+API_KEY    = os.environ.get("PROJECT_API_KEY", "")
+REPO_PATH  = os.environ.get("REPO_PATH", "")
+# Auto-detect REPO_PATH from script location if not set in .env
+if not REPO_PATH:
+    REPO_PATH = str(_SCRIPT_DIR)
+    os.environ["REPO_PATH"] = REPO_PATH
+OUTPUT_DIR = Path(REPO_PATH) / "newsletters"
+GIT_REMOTE = "origin"
 GIT_BRANCH  = "main"
 MODEL       = "GPT-oss-20B"
 MAX_TOKENS  = 3500
